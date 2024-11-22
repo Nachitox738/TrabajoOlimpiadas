@@ -1,8 +1,9 @@
 import * as React from 'react';
-import { Text, View, Pressable, Image, StyleSheet, Alert, Modal, ScrollView, StatusBar} from 'react-native';
+import { Text, View, Pressable, Image, StyleSheet, Alert, Modal, ScrollView, StatusBar, Platform, TextInput} from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import RNPickerSelect from 'react-native-picker-select';
 import axios from 'axios';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 const apiurl = "https://api.open5e.com/v1/classes/?name=";
@@ -742,7 +743,7 @@ const OpcionesPCStack = createNativeStackNavigator();
 function OpcionesPCStackScreen(){
   return(
     <OpcionesPCStack.Navigator  screenOptions={{headerStyle: {
-      backgroundColor: '#B75454',
+      backgroundColor: '#b72742',
     }, headerTitleStyle:{
       color:'#fff'
     },  
@@ -757,12 +758,96 @@ function OpcionesPCStackScreen(){
 }
 
 function PersonajesScreen() {
+  const [name, setName] = React.useState('');
+  const [selectedOption, setSelectedOption] = React.useState(null);
+
+  const options = [
+    { label: 'Barbaro', value: 'Barbaro' },
+    { label: 'Bardo', value: 'Bardo' },
+    { label: 'Brujo', value: 'Brujo' },
+    { label: 'Clerigo', value: 'Clerigo' },
+    { label: 'Druida', value: 'Druida' },
+    { label: 'Explorador', value: 'Explorador' },
+    { label: 'Guerrero', value: 'Guerrero' },
+    { label: 'Hechicero', value: 'Hechicero' },
+    { label: 'Mago', value: 'Mago' },
+    { label: 'Monje', value: 'Monje' },
+    { label: 'Paladin', value: 'Paladin' },
+    { label: 'Picaro', value: 'Picaro' },
+  ];
+
+  const handleSubmit = async () => {
+    if (!name || !selectedOption) {
+      Alert.alert('Error', 'Por favor completa todos los campos.');
+      return;
+    }
+
+    const formData = {
+      name,
+      selectedOption,
+    };
+
+    try {
+      const response = await fetch('https://tu-api.com/endpoint', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        Alert.alert('Éxito', 'Formulario enviado correctamente.');
+        setName('');
+        setSelectedOption(null);
+      } else {
+        Alert.alert('Error', 'Hubo un problema al enviar los datos.');
+      }
+    } catch (error) {
+      console.error('Error al enviar los datos:', error);
+      Alert.alert('Error', 'No se pudo conectar con el servidor.');
+    }
+  };
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text style={{fontSize:50, color:"#F92452"}}>Proximamente Personajes!</Text>
+    <View>
+      <Text style={{fontSize:20, marginTop:20,textAlign:'center'}}>Crea tu Personaje</Text>
+
+      <TextInput
+      
+      style={{fontSize:20, marginTop:20,paddingLeft:20}}
+        placeholder="Escribe tu nombre"
+        value={name}
+        onChangeText={setName}
+      />
+
+      <RNPickerSelect
+        onValueChange={(value) => setSelectedOption(value)}
+        items={options}
+        
+        style={stylesContainer.textoPC2}
+        placeholder={{
+          label: 'Selecciona una opción...',
+          value: null,
+        }}
+      />
+
+      <Pressable title="Enviar" onPress={handleSubmit} style={stylesContainer.pc5}><Text style={stylesContainer.textoPC7}>Enviar</Text></Pressable>
+
+      {selectedOption && (
+        <Text style={{paddingLeft:20,fontSize:20}}>
+          Has seleccionado: {selectedOption}
+        </Text>
+      )}
     </View>
   );
 }
+
+//if(id_tip_usu==1){
+//mostrar todos los personajes hechos
+//}
+// else{
+//mostrar solo los personajes de la cuenta
+//}
 
 function BestiarioScreen() {
  
@@ -790,10 +875,7 @@ function BestiarioScreen() {
   }, [modalVisible]);
   return(
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <View  style={{backgroundColor: '#B75454', color:'#fff',alignItems:'center',justifyContent: 'center', width:'100%', height:'10%', borderColor:'#000', borderWidth: 4, borderRadius:6, borderLeftWidth:0, borderRightWidth:0}}>
-        <Text style={{fontSize:30, color:"white"}}>Bestiario</Text>
-        </View>
-      <Text style={{fontSize:20, marginTop:40}}>Bestiario!</Text>
+      <Text style={{fontSize:20, marginTop:20}}>Bestiario!</Text>
       <Modal
         animationType='slide'
         transparent={true}
@@ -864,6 +946,37 @@ function BestiarioScreen() {
   );
 }
 
+const BestiarioStack = createNativeStackNavigator();
+
+function BestiarioStackScreen(){
+  return(
+    <OpcionesPCStack.Navigator  screenOptions={{headerStyle: {
+      backgroundColor: '#b72742',
+    }, headerTitleStyle:{
+      color:'#fff'
+    },  
+    headerTitleAlign:'center'}} >
+      <OpcionesPCStack.Screen name=" Bestiario " component={BestiarioScreen} />
+      
+    </OpcionesPCStack.Navigator>
+  );
+}
+
+const PersonajesStack = createNativeStackNavigator();
+
+function PersonajesStackScreen(){
+  return(
+    <OpcionesPCStack.Navigator  screenOptions={{headerStyle: {
+      backgroundColor: '#b72742',
+    }, headerTitleStyle:{
+      color:'#fff'
+    },  
+    headerTitleAlign:'center'}} >
+      <OpcionesPCStack.Screen name=" Personajes " component={PersonajesScreen} />
+      
+    </OpcionesPCStack.Navigator>
+  );
+}
 function ReferenciasScreen({ navigation }) {
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -1326,7 +1439,7 @@ const ReferenciasStack = createNativeStackNavigator();
 function ReferenciasStackScreen(){
   return(
     <ReferenciasStack.Navigator screenOptions={{headerStyle: {
-      backgroundColor: '#B75454',
+      backgroundColor: '#b72742',
     }, headerTitleStyle:{
       color:'#fff'
     },
@@ -1364,16 +1477,12 @@ export default function App() {
 
             return <Ionicons name={iconName} size={size} color={color} />;
           },
-          
-          
-          
           tabBarActiveTintColor: 'tomato',
-          tabBarInactiveTintColor: 'gray', })}
-          >
+          tabBarInactiveTintColor: 'gray', })}>            
         
         <Tab.Screen name="Opciones PC" component={OpcionesPCStackScreen} options={{headerShown:false}}/>
-        <Tab.Screen name="Personajes" component={PersonajesScreen} options={{headerShown:false}}/>
-        <Tab.Screen name="Bestiario" component={BestiarioScreen} options={{headerShown:false}}/>
+        <Tab.Screen name="Personajes" component={PersonajesStackScreen} options={{headerShown:false}}/>
+        <Tab.Screen name="Bestiario" component={BestiarioStackScreen} options={{headerShown:false}}/>
         <Tab.Screen name="Referencias" component={ReferenciasStackScreen} options={{headerShown:false}}/>
 
 
@@ -1385,7 +1494,7 @@ const stylesContainer = StyleSheet.create({
   container: {
     flex: 1,
     padding: 10,
-    backgroundColor: '#B75454',
+    backgroundColor: '#b72742',
   },
   pc:{
     width: '25%',
@@ -1443,6 +1552,14 @@ const stylesContainer = StyleSheet.create({
     fontSize: 13,
     fontWeight: 'bold',
   },
+  textoPC7:{ 
+    color:'#fff',
+    paddingTop:'8%',
+    textAlign:'center',
+    justifyContent:'center',
+    fontSize: 23,
+    fontWeight: 'bold',
+  },
    pc2:{
     width: '25%',
     height: '8%',
@@ -1466,6 +1583,17 @@ const stylesContainer = StyleSheet.create({
   marginBottom:70,
   height: '3%',
   margin: '2%',
+  borderColor:'#000',
+  borderWidth: 4,
+  borderRadius:6,
+  backgroundColor:'#b75454',
+},
+ pc5:{
+  width: '35%',
+  marginBottom:70,
+  height: '15%',
+  marginLeft: '35%',
+  margin: '5%',
   borderColor:'#000',
   borderWidth: 4,
   borderRadius:6,
@@ -1541,6 +1669,8 @@ const stodal = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 20,
     padding: 35,
+    borderWidth: 4,
+    borderColor: '#b72742',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
@@ -1571,4 +1701,4 @@ const stodal = StyleSheet.create({
     marginBottom: 15,
     textAlign: 'center',
   },
-});
+})
