@@ -1,12 +1,49 @@
 import * as React from 'react';
+import { useState, useEffect } from 'react';
 import { Text, View, Pressable, Image, StyleSheet, Alert, Modal, ScrollView, StatusBar, Platform, TextInput} from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import RNPickerSelect from 'react-native-picker-select';
 import axios from 'axios';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 const apiurl = "https://api.open5e.com/v1/classes/?name=";
+
+// const db = require('./bd/conexion.js');
+
+//require('dotenv/config');
+
+// {{
+// function agarrarDatos(){
+
+//   const sql = "SELECT * FROM personajes";
+//   db.query(sql,(err,result)=>{
+//     if(err){
+//         console.error("Error de lectura");
+//         return;
+//     }
+//     res.json(result);
+//    })
+// }
+// //query
+
+// app.post('/productos', (req, res) => {
+//   const sql = "INSERT INTO personajes (nombre, especie, clase, trasfondo) VALUES (?,?,?,?)";
+//   const values = Object.values(req.body);
+//   db.query(sql,values,(err,result)=>{
+//       if(err){
+//           console.error("Error al guardar", err);
+//           return;
+//       }
+//       res.json({mensaje:"Nuevo producto agregado"});
+//      })
+//   })
+//}}
+
+
+
 const buscarClase = async (nombre, campo) => {
   try {
     apiurlconc = apiurl+nombre;
@@ -758,10 +795,16 @@ function OpcionesPCStackScreen(){
 }
 
 function PersonajesScreen() {
-  const [name, setName] = React.useState('');
-  const [selectedOption, setSelectedOption] = React.useState(null);
+  const [data, setData] = useState([]);  
+  const [nombre, setName] = useState('');
+  const [clase, setSelectedClase] = useState(null);
+  const [especie, setSelectedEspecie] = useState(null);
+  const [trasfondo, setSelectedTrasfondo] = useState(null);
+  
+  const [modalVisible, setModalVisible] = useState(false);  
+  const [selectedCharacter, setSelectedCharacter] = useState(null); 
 
-  const options = [
+  const clases = [
     { label: 'Barbaro', value: 'Barbaro' },
     { label: 'Bardo', value: 'Bardo' },
     { label: 'Brujo', value: 'Brujo' },
@@ -776,78 +819,248 @@ function PersonajesScreen() {
     { label: 'Picaro', value: 'Picaro' },
   ];
 
+  const especies = [
+    { label: 'Enano', value: 'Enano' },
+    { label: 'Elfo', value: 'Elfo' },
+    { label: 'Mediano', value: 'Mediano' },
+    { label: 'Humano', value: 'Humano' },
+    { label: 'Draconido', value: 'Draconido' },
+    { label: 'Gnomo', value: 'Gnomo' },
+    { label: 'Tiflin', value: 'Tiflin' },
+  ];
+
+  const trasfondos = [
+    { label: 'Acolito', value: 'Acolito' },
+    { label: 'Artesano', value: 'Artesano' },
+    { label: 'Charlatan', value: 'Charlatan' },
+    { label: 'Criminal', value: 'Criminal' },
+    { label: 'Ermitaño', value: 'Ermitaño' },
+    { label: 'Forastero', value: 'Forastero' },
+    { label: 'Heroe del Pueblo', value: 'Heroe del Pueblo' },
+    { label: 'Huerfano', value: 'Huerfano' },
+    { label: 'Marinero', value: 'Marinero' },
+    { label: 'Noble', value: 'Noble' },
+    { label: 'Sabio', value: 'Sabio' },
+    { label: 'Soldado', value: 'Soldado' },
+  ];
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('http://192.168.0.18:3000/bd_dnd/personajes');
+        if (response.ok) {
+          const result = await response.json();
+          setData(result)
+        } else {
+          console.error('Error al obtener personajes');
+          throw new Error(`HTTP Error: ${response.status}`);
+        }
+      } catch (error) {
+        console.error('Error al hacer la solicitud:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   const handleSubmit = async () => {
-    if (!name || !selectedOption) {
+    if (!nombre || !clase || !especie || !trasfondo) {
       Alert.alert('Error', 'Por favor completa todos los campos.');
       return;
     }
-
+  
+    const nombreGuardado = await AsyncStorage.getItem('nombreLog');
+    if (!nombreGuardado) {
+      Alert.alert('Error', 'No se pudo obtener el nombre del usuario.');
+      return;
+    }
+  
     const formData = {
-      name,
-      selectedOption,
+      nombre,
+      clase,
+      especie,
+      trasfondo,
+      usuario: nombreGuardado,  
     };
-
+  
     try {
-      const response = await fetch('https://tu-api.com/endpoint', {
+      const response = await fetch('http://192.168.0.18:3000/bd_dnd/personajes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
       });
-
+  
       if (response.ok) {
-        Alert.alert('Éxito', 'Formulario enviado correctamente.');
+        const result = await response.json();
+        Alert.alert('Éxito', 'Personaje creado correctamente.');
+  
         setName('');
-        setSelectedOption(null);
+        setSelectedClase(null);
+        setSelectedEspecie(null);
+        setSelectedTrasfondo(null);
+  
+        await refreshCharacterList(); 
       } else {
-        Alert.alert('Error', 'Hubo un problema al enviar los datos.');
+        const errorData = await response.json();
+        Alert.alert('Error', errorData.message || 'Hubo un problema al enviar los datos.');
       }
     } catch (error) {
       console.error('Error al enviar los datos:', error);
       Alert.alert('Error', 'No se pudo conectar con el servidor.');
     }
   };
+  
+  const refreshCharacterList = async () => {
+    try {
+      const response = await fetch('http://192.168.0.18:3000/bd_dnd/personajes');
+      if (response.ok) {
+        const result = await response.json();
+        setData(result); 
+      } else {
+        console.error('Error al obtener los personajes');
+      }
+    } catch (error) {
+      console.error('Error al hacer la solicitud:', error);
+    }
+  };
+
+  const showCharacterDetails = (character) => {
+    setSelectedCharacter(character);
+    setModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+    setSelectedCharacter(null);
+  };
+
   return (
-    <View>
-      <Text style={{fontSize:20, marginTop:20,textAlign:'center'}}>Crea tu Personaje</Text>
+    <View style={styles.container}>
+      <Text style={stylesContainer.textoPC10}>Personajes Guardados:</Text>
+      
+      {data.map((item, index) => (
+        <Pressable key={index} onPress={() => showCharacterDetails(item)}>
+          <Text style={stylesContainer.textoPC9}>Nombre: {item.personaje_nombre}</Text>
+        </Pressable>
+      ))}
+      <View style={styles.container2}>
+      <Text style={{ fontSize: 20, marginTop: 20, textAlign: 'center' }}>Crea tu Personaje</Text>
 
       <TextInput
-      
-      style={{fontSize:20, marginTop:20,paddingLeft:20}}
+        style={{ fontSize: 20, marginTop: 20, paddingLeft: 20 }}
         placeholder="Escribe tu nombre"
-        value={name}
+        value={nombre}
         onChangeText={setName}
       />
 
       <RNPickerSelect
-        onValueChange={(value) => setSelectedOption(value)}
-        items={options}
-        
-        style={stylesContainer.textoPC2}
+        onValueChange={(value) => setSelectedClase(value)}
+        items={clases}
+        style={{ fontSize: 16 }}
+        placeholder={{
+          label: 'Selecciona una opción...',
+          value: null,
+        }}
+      />
+      <RNPickerSelect
+        onValueChange={(value) => setSelectedEspecie(value)}
+        items={especies}
+        style={{ fontSize: 16 }}
+        placeholder={{
+          label: 'Selecciona una opción...',
+          value: null,
+        }}
+      />
+      <RNPickerSelect
+        onValueChange={(value) => setSelectedTrasfondo(value)}
+        items={trasfondos}
+        style={{ fontSize: 16 }}
         placeholder={{
           label: 'Selecciona una opción...',
           value: null,
         }}
       />
 
-      <Pressable title="Enviar" onPress={handleSubmit} style={stylesContainer.pc5}><Text style={stylesContainer.textoPC7}>Enviar</Text></Pressable>
-
-      {selectedOption && (
-        <Text style={{paddingLeft:20,fontSize:20}}>
-          Has seleccionado: {selectedOption}
-        </Text>
-      )}
+      <Pressable onPress={handleSubmit} style={{ padding: 10, backgroundColor: '#1E90FF' }}>
+        <Text style={{ color: '#fff' }}>Enviar</Text>
+      </Pressable>
+      </View>
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={closeModal}
+      >
+        <View style={styles.modalBackground}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Detalles del Personaje</Text>
+            {selectedCharacter && (
+              <View style={styles.modalContent}>
+                <Text style={styles.modalText}>Nombre: {selectedCharacter.personaje_nombre}</Text>
+                <Text style={styles.modalText}>Clase: {selectedCharacter.clase}</Text>
+                <Text style={styles.modalText}>Especie: {selectedCharacter.especie}</Text>
+                <Text style={styles.modalText}>Trasfondo: {selectedCharacter.trasfondo}</Text>
+                <Text style={styles.modalText}>Creado por: {selectedCharacter.usuario_nombre}</Text>
+              </View>
+            )}
+            <Pressable onPress={closeModal} style={styles.closeButton}>
+              <Text style={styles.closeButtonText}>Cerrar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
-//if(id_tip_usu==1){
-//mostrar todos los personajes hechos
-//}
-// else{
-//mostrar solo los personajes de la cuenta
-//}
+const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+  },
+  container2: {
+    padding: 20,
+    borderWidth:2,
+  },
+  modalBackground: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContainer: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    width: '80%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  modalContent: {
+    marginBottom: 20,
+  },
+  modalText: {
+    fontSize: 16,
+    marginBottom: 5,
+  },
+  closeButton: {
+    backgroundColor: '#1E90FF',
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 10,
+  },
+  closeButtonText: {
+    color: '#fff',
+    textAlign: 'center',
+  },
+});
+
+
 
 function BestiarioScreen() {
  
@@ -857,7 +1070,7 @@ function BestiarioScreen() {
   const [selectedId, setSelectedId] = React.useState(null);
   let arrActu = []
   const handleEnemy = (id) => {
-    setSelectedId(id); // Reemplaza el ID anterior con el actual
+    setSelectedId(id);
     setModalVisible(true);
   };
   React.useEffect(() => {
@@ -972,10 +1185,174 @@ function PersonajesStackScreen(){
       color:'#fff'
     },  
     headerTitleAlign:'center'}} >
-      <OpcionesPCStack.Screen name=" Personajes " component={PersonajesScreen} />
+      <OpcionesPCStack.Screen name="Personajes" component={PersonajesScreen} />
       
     </OpcionesPCStack.Navigator>
   );
+}
+function UsuariosScreen({navigation}){
+ 
+return (
+    <View style={{ flex: 1, alignItems: 'center' }}>
+  <View style={{width:'100%', height: '20%',marginTop:'35%'}}>
+  <Pressable onPress={()=>navigation.navigate('Registros')} style={stylesContainer.boton }><Text style={stylesContainer.texto }>
+  <Image style={imagen.tinyLogo} source={require('./iconos/registro.png')}/>Crear Usuario</Text></Pressable>{/* libro */}
+  </View>
+
+  <View style={{width:'100%', height: '20%',marginTop:'15%'}}>
+  <Pressable onPress={()=>navigation.navigate('Login')} style={stylesContainer.boton }><Text style={stylesContainer.texto }>
+  <Image style={imagen.tinyLogo} source={require('./iconos/login.png')}/>Iniciar Sesion</Text></Pressable>{/* fuego */}
+  </View>
+    </View>
+  );
+}
+function RegistrosScreen(){ 
+  const [nombre, setName] = React.useState('');
+  const [contrasena, setContrasena] = React.useState('');
+  
+  const handleSubmit = async () => {
+    if (!nombre || !contrasena) {
+      Alert.alert('Error', 'Por favor completa todos los campos.');
+      return;
+    }
+
+    const formData = {
+      nombre,
+      contrasena,
+      //enviar id
+    };
+
+    try {
+      console.log(formData);
+      const response = await fetch('http://192.168.0.18:3000/bd_dnd/usuarios', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+      if (response.ok) {
+        Alert.alert('Éxito', 'Formulario enviado correctamente.');
+        setName('');
+        setContrasena('')
+      } else {
+        Alert.alert('Error', 'Hubo un problema al enviar los datos.');
+      }
+    } catch (error) {
+      console.error('Error al enviar los datos:', error);
+      Alert.alert('Error', 'No se pudo conectar con el servidor.');
+    }
+  };
+
+  return(
+    <View style={{width:'100%', height: '100%'}}>
+    <View >
+        <Text style={{fontSize:20, marginTop:50, textAlign:'center'}}>Crear Usuario</Text>
+    </View>
+        <TextInput
+        style={{fontSize:20, marginTop:20,paddingLeft:20}}
+          placeholder="Escribe tu nombre"
+          value={nombre}
+          onChangeText={setName}
+        />
+        
+        <TextInput
+        style={{fontSize:20, marginTop:20,paddingLeft:20}}
+          placeholder="Escribe tu contraseña"
+          value={contrasena}
+          onChangeText={setContrasena}
+        />
+        
+        <Pressable title="Enviar" onPress={handleSubmit} style={stylesContainer.pc8}><Text style={stylesContainer.textoPC8}>Enviar</Text></Pressable>
+  
+      
+      </View>);
+}
+function LoginScreen (){ 
+  const [contrasenaLog, setContrasenaLog] = useState('');
+  const [nombreLog, setNameLog] = useState('');
+  const navigation = useNavigation();  // Usar useNavigation correctamente
+
+  const handleSubmit = async () => {
+    if (!nombreLog || !contrasenaLog) {
+      Alert.alert('Error', 'Por favor completa todos los campos.');
+      return;
+    }
+
+    const url = `http://192.168.0.18:3000/bd_dnd/usuario?nombre=${encodeURIComponent(nombreLog)}&contrasena=${encodeURIComponent(contrasenaLog)}`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        if (data.id_usuario) {
+          await AsyncStorage.setItem('nombreLog', nombreLog);
+          await AsyncStorage.setItem('id_usuario', String(data.id_usuario));
+
+          Alert.alert('Éxito', data.message);
+          navigation.navigate('Personajes');  
+        } else {
+          Alert.alert('Error', 'Usuario no encontrado');
+        }
+      } else {
+        const errorData = await response.json();
+        Alert.alert('Error', errorData.message || 'Nombre de usuario o contraseña incorrectos');
+      }
+    } catch (error) {
+      console.error('Error al enviar los datos:', error);
+      Alert.alert('Error', 'No se pudo conectar con el servidor');
+    }
+  };
+
+  return (
+    <View style={{ width: '100%', height: '20%' }}>
+      <View>
+        <Text style={{ fontSize: 20, marginTop: 20, textAlign: 'center' }}>Iniciar Sesion</Text>
+
+        <TextInput
+          style={{ fontSize: 20, marginTop: 20, paddingLeft: 20 }}
+          placeholder="Escribe tu nombre"
+          value={nombreLog}
+          onChangeText={setNameLog}
+        />
+
+        <TextInput
+          style={{ fontSize: 20, marginTop: 20, paddingLeft: 20 }}
+          placeholder="Escribe tu contraseña"
+          secureTextEntry
+          value={contrasenaLog}
+          onChangeText={setContrasenaLog}
+        />
+
+        <Pressable title="Enviar" onPress={handleSubmit} style={{ padding: 10, backgroundColor: '#4CAF50', marginTop: 20 }}>
+          <Text style={{ color: 'white', textAlign: 'center' }}>Enviar</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+};
+const UsuariosStack = createNativeStackNavigator();
+
+function UsuariosStackScreen(){
+  return(
+    <UsuariosStack.Navigator screenOptions={{headerStyle: {
+      backgroundColor: '#b72742',
+    }, headerTitleStyle:{
+      color:'#fff'
+    },
+    headerTitleAlign:'center'}} >
+      <UsuariosStack.Screen name="Usuarios" component={UsuariosScreen}/>
+      <UsuariosStack.Screen name="Login" component={LoginScreen}/>
+      <UsuariosStack.Screen name="Registros" component={RegistrosScreen}/>
+    </UsuariosStack.Navigator>
+  )
 }
 function ReferenciasScreen({ navigation }) {
   return (
@@ -1474,6 +1851,9 @@ export default function App() {
               else if(route.name === 'Referencias'){
                 iconName = focused ? 'bookmarks-outline' : 'bookmarks-outline';
               }
+              else if(route.name === 'Usuario'){
+                iconName = focused ? 'happy-outline' : 'happy-outline';
+              }
 
             return <Ionicons name={iconName} size={size} color={color} />;
           },
@@ -1484,6 +1864,7 @@ export default function App() {
         <Tab.Screen name="Personajes" component={PersonajesStackScreen} options={{headerShown:false}}/>
         <Tab.Screen name="Bestiario" component={BestiarioStackScreen} options={{headerShown:false}}/>
         <Tab.Screen name="Referencias" component={ReferenciasStackScreen} options={{headerShown:false}}/>
+        <Tab.Screen name="Usuario" component={UsuariosStackScreen} options={{headerShown:false}}/>
 
 
       </Tab.Navigator>
@@ -1560,6 +1941,30 @@ const stylesContainer = StyleSheet.create({
     fontSize: 23,
     fontWeight: 'bold',
   },
+  textoPC8:{ 
+    color:'#fff',
+    paddingTop:'4%',
+    textAlign:'center',
+    justifyContent:'center',
+    fontSize: 23,
+    fontWeight: 'bold',
+  },
+  textoPC9:{ 
+    paddingTop:5,
+    margin:5,
+    textAlign:'center',
+    justifyContent:'center',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  textoPC10:{ 
+    paddingTop:5,
+    margin:5,
+    textAlign:'center',
+    justifyContent:'center',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
    pc2:{
     width: '25%',
     height: '8%',
@@ -1598,6 +2003,39 @@ const stylesContainer = StyleSheet.create({
   borderWidth: 4,
   borderRadius:6,
   backgroundColor:'#b75454',
+},
+pc6:{
+ width: '35%',
+ marginBottom:70,
+ height: '55%',
+ marginLeft: '35%',
+ margin: '5%',
+ borderColor:'#000',
+ borderWidth: 4,
+ borderRadius:6,
+ backgroundColor:'#b75454',
+},
+pc7:{
+ width: '35%',
+ marginBottom:70,
+ height: '35%',
+ marginLeft: '35%',
+ margin: '5%',
+ borderColor:'#000',
+ borderWidth: 4,
+ borderRadius:6,
+ backgroundColor:'#b75454',
+},
+pc8:{
+ width: '35%',
+ marginBottom:70,
+ height: '8%',
+ marginLeft: '35%',
+ margin: '5%',
+ borderColor:'#000',
+ borderWidth: 4,
+ borderRadius:6,
+ backgroundColor:'#b75454',
 },
   boton: {
     width: '100%',
